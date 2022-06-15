@@ -19,7 +19,7 @@ pub fn build(b: *std.build.Builder) void {
     const mode = b.standardReleaseOptions();
 
     const exe = switch (target.os_tag orelse @panic("OS unspecified")) {
-        .windows => b.addExecutable("smol-pong-zig", "src/NT-GDI/main.zig"),
+        .windows => b.addExecutable("smol-pong-zig", "src/nt-gdi/main.zig"),
         else => @panic("Unimplemented target"),
     };
 
@@ -31,17 +31,15 @@ pub fn build(b: *std.build.Builder) void {
             const libc_path = b.option([]const u8, "libc-path", "Path to C compiler headers, needed for resolving <windows.h>");
             if (libc_path) |path|
                 exe.addIncludeDir(path);
-            exe.subsystem = .Windows;
-            exe.link_eh_frame_hdr = false;
-            exe.link_emit_relocs = false;
-            exe.link_z_notext = true;
-            exe.red_zone = false;
-            exe.omit_frame_pointer = true;
-            exe.pie = false;
+            if (mode != .Debug)
+                exe.subsystem = .Windows;
             exe.linkSystemLibrary("gdi32");
         },
         else => {},
     }
+
+    if (mode != .Debug)
+        exe.omit_frame_pointer = true;
 
     exe.want_lto = true;
     exe.single_threaded = true;

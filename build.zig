@@ -18,50 +18,37 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const exe = switch (target.os_tag orelse @panic("OS unspecified")) {
-        .windows => b.addExecutable("smol-pong-zig", "src/nt-gdi/main.zig"),
-        else => @panic("Unimplemented target"),
-    };
+    const exe = if (target.os_tag) |os| ret: {
+        if (os == .windows) {
+            const exe = b.addExecutable("smol-pong-zig", "src/nt-gdi/main.zig");
+            const libc_path = b.option([]const u8, "libc-path", "Path to C compiler headers, needed for resolving <windows.h>");
+            if (mode != .Debug)
+                exe.subsystem = .Windows;
+            if (libc_path) |path| {
+                exe.addIncludePath(path);
+            } else @panic("-Dlibc-path option is required");
+
+            exe.code_model = .small;
+
+            exe.linkSystemLibraryName("kernel32");
+            exe.linkSystemLibraryName("user32");
+            exe.linkSystemLibraryName("gdi32");
+            exe.linkSystemLibraryName("ntdll");
+            break :ret exe;
+        } else @panic("OS unimplemented");
+    } else @panic("OS unspecified");
 
     exe.addPackagePath("backend", "src/backend.zig");
     exe.addPackagePath("game", "src/game.zig");
 
-    switch (target.os_tag orelse @panic("OS unspecified")) {
-        .windows => {
-            const libc_path = b.option([]const u8, "libc-path", "Path to C compiler headers, needed for resolving <windows.h>");
-            if (libc_path) |path|
-                exe.addIncludeDir(path);
-            if (mode != .Debug)
-                exe.subsystem = .Windows;
-            exe.linkSystemLibrary("gdi32");
-        },
-        else => {},
-    }
-
     if (mode != .Debug)
         exe.omit_frame_pointer = true;
+        exe.strip = true;
 
     exe.want_lto = true;
     exe.single_threaded = true;
-    exe.strip = true;
 
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.install();
-
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
-
-    const exe_tests = b.addTest("src/main.zig");
-    exe_tests.setTarget(target);
-    exe_tests.setBuildMode(mode);
-
-    const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&exe_tests.step);
 }

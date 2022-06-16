@@ -55,10 +55,6 @@ pub fn init() void {
     game.init();
 }
 
-pub fn deinit() void {
-
-}
-
 pub fn process() void {
     var current_time = impl.getTimestamp();
     if (current_time - time_last >= PROCESS_FRAME_TIME_LIMIT)

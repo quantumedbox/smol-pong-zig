@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# todo: Move it to `build.zig`, no need to segment the tooling
 # todo: Versions older than Windows 2000 might be runnable too, all the way to Win 95 / NT 3.1, but testing is needed
 
 import subprocess, os, sys

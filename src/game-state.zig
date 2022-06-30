@@ -6,42 +6,35 @@ players: [2]Player,
 ball: Ball,
 
 pub fn init(mode: enum { WithBot, Hotseat }) @This() {
-    // todo: Optimization?
-    return switch (mode) {
-        .WithBot => .{
-            .players = [2]Player{ Player.init(), Player.init() },
-            .ball = Ball.init(0),
-        },
-        .Hotseat => .{
-            .is_hotseat = true,
-            .players = [2]Player{ Player.init(), Player.init() },
-            .ball = Ball.init(0),
-        },
+    return .{
+        .is_hotseat = switch (mode) { .Hotseat => true, .WithBot => false },
+        .players = [2]Player{ Player.init(), Player.init() },
+        .ball = Ball.init(0),
     };
 }
 
 pub fn draw(self: *@This()) void {
-    backend.graphic_context.drawRect(0, self.players[0].height, Player.WIDTH, Player.HEIGHT, .White);
-    backend.graphic_context.drawRect(backend.window_width - Player.WIDTH, self.players[1].height, Player.WIDTH, Player.HEIGHT, .White);
+    backend.graphic_context.drawRect(0, self.players[0].y, Player.WIDTH, Player.HEIGHT);
+    backend.graphic_context.drawRect(backend.window_width - Player.WIDTH, self.players[1].y, Player.WIDTH, Player.HEIGHT);
     backend.graphic_context.drawCircle(self.ball.pos[0], self.ball.pos[1], Ball.RADIUS);
 
     var buf: [3]u8 = undefined;
-    backend.graphic_context.drawText(0, 0, pointsToText(&buf, self.players[0].points), 20);
+    backend.graphic_context.drawText(0, 0, pointsToText(&buf, self.players[0].points), .Big);
     const slice = pointsToText(&buf, self.players[1].points);
-    const dims = backend.graphic_context.getTextDimensions(slice, 20);
-    backend.graphic_context.drawText(backend.window_width - dims[0], 0, slice, 20);
+    const dims = backend.graphic_context.getTextDimensions(slice, .Big);
+    backend.graphic_context.drawText(backend.window_width - dims[0], 0, slice, .Big);
 }
 
 pub fn process(self: *@This()) void {
     // Player pads
     for (self.players) |*player, i| {
         if (i == 1 and !self.is_hotseat) {
-            player.target_height += Player.SPEED * (@as(i16, @boolToInt(self.ball.pos[1] > (player.target_height + Player.HEIGHT / 2))) * 2 - 1);
+            player.target_y += Player.SPEED * (@as(i16, @boolToInt(self.ball.pos[1] > (player.target_y + Player.HEIGHT / 2))) * 2 - 1);
         } else {
-            player.target_height += Player.SPEED * (backend.keymap.players[i][1] - backend.keymap.players[i][0]);
+            player.target_y += Player.SPEED * (backend.keymap.players[i][1] - backend.keymap.players[i][0]);
         }
-        player.target_height = std.math.clamp(player.target_height, 0, backend.window_height - Player.HEIGHT);
-        player.height += @divTrunc(player.target_height - player.height, 4);
+        player.target_y = std.math.clamp(player.target_y, 0, backend.window_height - Player.HEIGHT);
+        player.y += @divTrunc(player.target_y - player.y, 4);
     }
 
     // Process ball
@@ -57,7 +50,7 @@ pub fn process(self: *@This()) void {
                 continue;
         }
         // Brain fart
-        if (isSegmentContained(self.ball.up_extend, self.ball.bottom_extend, player.height, player.height + Player.HEIGHT)) {
+        if (isSegmentContained(self.ball.up_extend, self.ball.bottom_extend, player.y, player.y + Player.HEIGHT)) {
             self.ball.dir[0] = -(@intCast(i8, i) * 2 - 1);
             self.ball.speed += 1;
             self.ball.pos[0] = if (i == 0)
@@ -68,8 +61,8 @@ pub fn process(self: *@This()) void {
             self.players[1 - i].points += 1;
             self.ball = Ball.init(backend.rng.intInRange(i16, -32, 32));
             for (self.players) |*player_| {
-                player_.height = backend.window_half_height;
-                player_.target_height = backend.window_half_height;
+                player_.y = backend.window_half_height;
+                player_.target_y = backend.window_half_height;
             }
             return;
         }
@@ -86,9 +79,8 @@ pub fn process(self: *@This()) void {
 }
 
 const Player = struct {
-    // todo: Rename to pos?
-    height: i16,
-    target_height: i16,
+    y: i16,
+    target_y: i16,
     points: u8 = 0,
 
     // todo: It might be better to delegate sizes to backends, as gameplay might be affected by specific resolutions that are available
@@ -98,8 +90,8 @@ const Player = struct {
 
     pub fn init() @This() {
         return .{
-            .height = backend.window_half_height,
-            .target_height = backend.window_half_height,
+            .y = backend.window_half_height,
+            .target_y = backend.window_half_height,
         };
     }
 };
@@ -125,7 +117,6 @@ const Ball = struct {
         };
     }
 
-    // todo: Store extends?
     pub fn process(self: *@This()) void {
         self.pos[0] += self.speed * self.dir[0];
         self.pos[1] += self.speed * self.dir[1];

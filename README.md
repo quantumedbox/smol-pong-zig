@@ -14,7 +14,7 @@ Tested on Win10 and Windows 2000, but theoretically should run on any Windows ve
 * Microsoft Defender and many anti-viruses detect produced executable as malicious, you have to make exception for it, if you dare to run it
 ```
    text    data     bss     dec     hex filename
-   4588       0       0    4588    11ec ./zig-out/bin/smol-pong-zig.exe
+   4266       0       0    4266    10aa ./zig-out/bin/smol-pong-zig.exe
 ```
 ![smol-pong-zig running on windows 2000 in qemu](/demo/windows2000.png)
 

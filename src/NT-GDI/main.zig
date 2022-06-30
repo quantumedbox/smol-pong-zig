@@ -7,6 +7,9 @@ const REQUESTED_WINDOW_WIDTH = 1024;
 const REQUESTED_WINDOW_HEIGHT = 768;
 const TIMER_ID = 1000;
 
+const COLORREF_WHITE: winapi.DWORD = 0x00FFFFFF;
+const COLORREF_BLACK: winapi.DWORD = 0x00000000;
+
 pub const WINAPI = if (builtin.target.cpu.arch == .i386) .Stdcall else .C;
 
 // note: This breaks async, stack trace and possibly other things
@@ -32,7 +35,7 @@ fn WinMain() callconv(.Inline) void {
         .style = winapi.CS_OWNDC | winapi.CS_HREDRAW | winapi.CS_VREDRAW,
         .hIcon = null,
         .hCursor = null,
-        .hbrBackground = null,
+        .hbrBackground = @ptrCast(winapi.HBRUSH, @alignCast(@alignOf(winapi.HBRUSH), winapi.GetStockObject(winapi.BLACK_BRUSH))),
         .lpszMenuName = null,
         .cbClsExtra = 0,
         .cbWndExtra = 0,
@@ -71,15 +74,12 @@ fn WinMain() callconv(.Inline) void {
     }
 }
 
-fn messageCallback(hwnd_: winapi.HWND, uMsg: winapi.UINT, wParam: winapi.WPARAM, lParam: winapi.LPARAM) callconv(WINAPI) winapi.LRESULT {
+fn messageCallback(hwnd: winapi.HWND, uMsg: winapi.UINT, wParam: winapi.WPARAM, lParam: winapi.LPARAM) callconv(WINAPI) winapi.LRESULT {
     if (builtin.target.cpu.arch == .x86_64) {
         @setAlignStack(16);
     } else {
         @setAlignStack(4);
     }
-
-    // todo: Kinda shitty
-    const hwnd = @ptrCast(winapi.HWND, @alignCast(@alignOf(winapi.HWND), hwnd_));
 
     switch (uMsg) {
         winapi.WM_CREATE => {
@@ -110,6 +110,9 @@ fn messageCallback(hwnd_: winapi.HWND, uMsg: winapi.UINT, wParam: winapi.WPARAM,
             const bmp = winapi.CreateCompatibleBitmap(hdc, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top);
             const oldBmp = winapi.SelectObject(mem_dc, bmp);
             backend.graphic_context.hdc = mem_dc;
+            _ = winapi.SetTextColor(mem_dc, COLORREF_WHITE);
+            _ = winapi.SetBkColor(mem_dc, COLORREF_BLACK);
+            _ = winapi.SelectObject(mem_dc, winapi.GetStockObject(winapi.WHITE_BRUSH));
             game.render();
             if (winapi.BitBlt(hdc, 0, 0, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top, mem_dc, 0, 0, winapi.SRCCOPY) == 0)
                 backend.panicFmt("BitBlt() failed", .{});
@@ -140,7 +143,7 @@ fn messageCallback(hwnd_: winapi.HWND, uMsg: winapi.UINT, wParam: winapi.WPARAM,
                 backend.panicFmt("KillTimer() failed", .{});
             winapi.PostQuitMessage(0);
         },
-        else => return winapi.DefWindowProcW(hwnd_, uMsg, wParam, lParam),
+        else => return winapi.DefWindowProcW(hwnd, uMsg, wParam, lParam),
     }
     return 0;
 }

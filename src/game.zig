@@ -13,7 +13,6 @@ pub fn init() void {
 }
 
 pub fn render() void {
-    backend.graphic_context.drawRect(0, 0, backend.window_width, backend.window_height, .Black);
     switch (stage) {
         .menu => stage.menu.draw(),
         .game => stage.game.draw(),

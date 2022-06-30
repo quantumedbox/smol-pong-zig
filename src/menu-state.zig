@@ -18,15 +18,15 @@ pub fn init() @This() {
 }
 
 pub fn draw(self: *@This()) void {
-    const title_dims = backend.graphic_context.getTextDimensions(self.title, 20); // todo: Can we escape getting it every time?
+    const title_dims = backend.graphic_context.getTextDimensions(self.title, .Big); // todo: Can we escape getting it every time?
     std.debug.assert(title_dims[0] <= backend.window_width);
     const range = backend.window_width - title_dims[0];
     const a = @intCast(u8, backend.frame_count % 256);
     const x = @divTrunc(range, 127) * (a - (((a & 1 << 7) >> 7) * (a - 128)) * 2);
-    backend.graphic_context.drawText(x, 0, self.title, 20);
+    backend.graphic_context.drawText(x, 0, self.title, .Big);
     backend.graphic_context.drawCircle(self.ball_pos[0], self.ball_pos[1], 26);
-    const hint_dims = backend.graphic_context.getTextDimensions(HINT_TEXT, 15); // todo: Can we escape getting it every time?
-    backend.graphic_context.drawText(0, backend.window_height - hint_dims[1], HINT_TEXT, 15);
+    const hint_dims = backend.graphic_context.getTextDimensions(HINT_TEXT, .Small); // todo: Can we escape getting it every time?
+    backend.graphic_context.drawText(0, backend.window_height - hint_dims[1], HINT_TEXT, .Small);
 }
 
 pub fn process(self: *@This()) void {
